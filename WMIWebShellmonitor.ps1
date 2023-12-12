@@ -22,7 +22,7 @@ $instanceConsumer.CommandLineTemplate="/c C:\monitor\yara\yara64.exe -s  C:\moni
 1-  C:\monitor\yara\yara64.exe is the path to Yara for windows excutable
 2-  C:\monitorme folder to monitor
 3-  C:\monitor\yara\rules.yar the Yara Rules to check for 
-4-  C:\test.txt log file locaiton
+4-  C:\test.txt log file location
 #>
 $result = $instanceConsumer.Put()
 $newConsumer = $result.Path
