@@ -1,4 +1,4 @@
-# WMI
+# Aspx Webshell Detection Through WMI and Yara
 
 WMI permenant event subscription to monitor new files dropped in a specific folder and check them using Yara for certain Web Shell patterns. it will log to a file you choose.
 The script monitors a web folder for newly drop ASP/ASPX files and check if they have any signs of webshell code in them
