@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0xAnalyst / WebshellDetection-WMI-Yara</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #eeede8;
+    --text: #1a1a18; --text2: #5a5a56; --text3: #9a9a94;
+    --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.2);
+    --radius: 8px; --radius-lg: 12px;
+    --c-yara: #3B6D11; --c-yara-bg: #EAF3DE; --c-yara-border: #97C459;
+    --c-sigma: #185FA5; --c-sigma-bg: #E6F1FB; --c-sigma-border: #85B7EB;
+    --c-wmi: #854F0B; --c-wmi-bg: #FAEEDA; --c-wmi-border: #EF9F27;
+    --c-ps: #533AB7; --c-ps-bg: #EEEDFE; --c-ps-border: #AFA9EC;
+    --c-edr: #A32D2D; --c-edr-bg: #FCEBEB; --c-edr-border: #F09595;
+    --c-new: #0F6E56; --c-new-bg: #E1F5EE; --c-new-border: #5DCAA5;
+    --mono: 'Courier New', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c; --bg2: #2a2a28; --bg3: #323230;
+      --text: #e8e8e2; --text2: #a0a09a; --text3: #606058;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --c-yara: #97C459; --c-yara-bg: #1a2e08; --c-yara-border: #3B6D11;
+      --c-sigma: #85B7EB; --c-sigma-bg: #0d2a42; --c-sigma-border: #185FA5;
+      --c-wmi: #EF9F27; --c-wmi-bg: #3a2a0a; --c-wmi-border: #854F0B;
+      --c-ps: #AFA9EC; --c-ps-bg: #1e1a42; --c-ps-border: #534AB7;
+      --c-edr: #F09595; --c-edr-bg: #3a1a1a; --c-edr-border: #791F1F;
+      --c-new: #5DCAA5; --c-new-bg: #062818; --c-new-border: #0F6E56;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg2); color: var(--text); min-height: 100vh; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .hero { padding-bottom: 1.5rem; border-bottom: 0.5px solid var(--border); margin-bottom: 1.5rem; }
+  .repo-path { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .repo-path a { color: var(--c-sigma); text-decoration: none; }
+  .hero h1 { font-size: 24px; font-weight: 500; margin-bottom: 8px; }
+  .hero p { font-size: 14px; color: var(--text2); line-height: 1.6; max-width: 600px; margin-bottom: 14px; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: var(--radius); border: 0.5px solid; }
+  .b-gray  { background: var(--bg3);      color: var(--text2);      border-color: var(--border2); }
+  .b-yara  { background: var(--c-yara-bg); color: var(--c-yara);    border-color: var(--c-yara-border); }
+  .b-sigma { background: var(--c-sigma-bg); color: var(--c-sigma);  border-color: var(--c-sigma-border); }
+  .b-wmi   { background: var(--c-wmi-bg);  color: var(--c-wmi);     border-color: var(--c-wmi-border); }
+  .b-ps    { background: var(--c-ps-bg);   color: var(--c-ps);      border-color: var(--c-ps-border); }
+  .b-edr   { background: var(--c-edr-bg);  color: var(--c-edr);     border-color: var(--c-edr-border); }
+  .b-new   { background: var(--c-new-bg);  color: var(--c-new);     border-color: var(--c-new-border); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .stat { background: var(--bg3); border-radius: var(--radius); padding: 12px 14px; }
+  .stat-val { font-size: 22px; font-weight: 500; }
+  .stat-lbl { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.2rem; align-items: center; }
+  .filter-lbl { font-size: 12px; color: var(--text2); }
+  .filter-btn { font-size: 12px; padding: 5px 14px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: all .15s; }
+  .filter-btn:hover { background: var(--bg3); color: var(--text); }
+  .filter-btn.active { background: var(--bg); color: var(--text); border-color: var(--border2); box-shadow: 0 0 0 1px var(--border2); }
+  .section { margin-bottom: 2rem; }
+  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); }
+  .section-icon { font-size: 16px; color: var(--text2); }
+  .section-title { font-size: 15px; font-weight: 500; }
+  .section-path { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .section-count { font-size: 12px; color: var(--text3); margin-left: auto; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; cursor: pointer; transition: border-color .15s; text-decoration: none; color: inherit; display: block; }
+  .card:hover { border-color: var(--border2); }
+  .card.hidden { display: none; }
+  .card-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+  .card-name { font-size: 13px; font-weight: 500; font-family: var(--mono); margin-bottom: 4px; }
+  .card-desc { font-size: 12px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; }
+  .mitre { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .gh-link { font-size: 11px; color: var(--c-sigma); text-decoration: none; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 14px; background: var(--bg3); border-radius: var(--radius); margin-bottom: 1.5rem; font-size: 12px; color: var(--text2); align-items: center; }
+  .warning { background: var(--c-edr-bg); border: 0.5px solid var(--c-edr-border); border-radius: var(--radius); padding: 12px 16px; font-size: 13px; color: var(--c-edr); margin-top: 2rem; }
+  @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="repo-path"><a href="https://github.com/0xAnalyst">0xAnalyst</a> / WebshellDetection-WMI-Yara</div>
+    <h1>WebshellDetection-WMI-Yara</h1>
+    <p>Webshell detection using WMI permanent event subscriptions, YARA rules, Sigma rules, and PowerShell monitors. Covers static file scanning, behavioral telemetry, process chain analysis, memory scanning, and SIEM correlation.</p>
+    <div class="badges">
+      <span class="badge b-gray">Threat hunting</span>
+      <span class="badge b-gray">IIS / ASPX</span>
+      <span class="badge b-yara">YARA</span>
+      <span class="badge b-sigma">Sigma</span>
+      <span class="badge b-wmi">WMI</span>
+      <span class="badge b-ps">PowerShell</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val">18</div><div class="stat-lbl">Detection rules</div></div>
+    <div class="stat"><div class="stat-val">6</div><div class="stat-lbl">Categories</div></div>
+    <div class="stat"><div class="stat-val">12</div><div class="stat-lbl">ATT&CK TTPs</div></div>
+    <div class="stat"><div class="stat-val">4</div><div class="stat-lbl">Detection layers</div></div>
+  </div>
+
+  <div class="legend">
+    <span>Rule type:</span>
+    <span class="badge b-yara">YARA</span>
+    <span class="badge b-sigma">Sigma</span>
+    <span class="badge b-wmi">WMI</span>
+    <span class="badge b-ps">PowerShell</span>
+    <span class="badge b-new">New</span>
+  </div>
+
+  <div class="filters">
+    <span class="filter-lbl">Filter:</span>
+    <button class="filter-btn active" onclick="filter('all',this)">All</button>
+    <button class="filter-btn" onclick="filter('existing',this)">Existing</button>
+    <button class="filter-btn" onclick="filter('static',this)">Static / YARA</button>
+    <button class="filter-btn" onclick="filter('behavioral',this)">Behavioral</button>
+    <button class="filter-btn" onclick="filter('process',this)">Process chain</button>
+    <button class="filter-btn" onclick="filter('memory',this)">Memory</button>
+    <button class="filter-btn" onclick="filter('network',this)">Network</button>
+    <button class="filter-btn" onclick="filter('sigma',this)">Sigma / SIEM</button>
+  </div>
+
+  <div class="section" id="sec-existing">
+    <div class="section-header">
+      <span class="section-icon">📁</span>
+      <span class="section-title">Existing detection</span>
+      <span class="section-count">2 files</span>
+    </div>
+    <div class="card-grid">
+      <a class="card" data-cat="existing" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/WMIWebShellmonitor.ps1">
+        <div class="card-tags"><span class="badge b-wmi">WMI</span><span class="badge b-ps">PowerShell</span></div>
+        <div class="card-name">WMIWebShellmonitor.ps1</div>
+        <div class="card-desc">WMI permanent event subscription — monitors web folder for new ASP/ASPX drops, triggers YARA scan on creation. Logs results to file.</div>
+        <div class="card-footer"><span class="mitre">T1505.003</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="existing" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/rules.yar">
+        <div class="card-tags"><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">rules.yar</div>
+        <div class="card-desc">Static YARA ruleset covering common PHP/ASP webshell string patterns, eval chains, and encoded payloads (built by lnxg33k).</div>
+        <div class="card-footer"><span class="mitre">T1505.003</span><span class="gh-link">View →</span></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section" id="sec-static">
+    <div class="section-header">
+      <span class="section-icon">🔍</span>
+      <span class="section-title">Static / YARA rules</span>
+      <span class="section-path">yara/</span>
+      <span class="section-count">5 rules</span>
+    </div>
+    <div class="card-grid">
+      <a class="card" data-cat="static" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/yara/aspx_dinvoke.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">aspx_dinvoke.yar</div>
+        <div class="card-desc">Detects dynamic P/Invoke via GetProcAddress patterns — catches CreateProcess_Dynamic.aspx and similar runtime API resolution without DllImport.</div>
+        <div class="card-footer"><span class="mitre">T1106 · T1027</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="static" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/yara/aspx_assembly_load.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">aspx_assembly_load.yar</div>
+        <div class="card-desc">Detects Assembly.Load() combined with XOR decode loops — catches in-memory reflective .NET loading without touching disk.</div>
+        <div class="card-footer"><span class="mitre">T1027 · T1620</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="static" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/yara/aspx_etw_amsi_patch.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">aspx_etw_amsi_patch.yar</div>
+        <div class="card-desc">Detects byte-patch sequences targeting EtwEventWrite and AmsiScanBuffer — catches in-process telemetry blinding before execution.</div>
+        <div class="card-footer"><span class="mitre">T1562.001 · T1562.006</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="static" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/yara/aspx_syscall_stub.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">aspx_syscall_stub.yar</div>
+        <div class="card-desc">Detects direct syscall stubs and Heaven's Gate patterns embedded in ASPX — catches NtCreateProcess direct invocation bypassing ntdll hooks.</div>
+        <div class="card-footer"><span class="mitre">T1055 · T1562.006</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="static" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/yara/aspx_roslyn_eval.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">aspx_roslyn_eval.yar</div>
+        <div class="card-desc">Detects CSharpScript.EvaluateAsync and Microsoft.CodeAnalysis imports — catches Roslyn runtime compile-and-run patterns with no disk artifact.</div>
+        <div class="card-footer"><span class="mitre">T1027.010</span><span class="gh-link">View →</span></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section" id="sec-behavioral">
+    <div class="section-header">
+      <span class="section-icon">📡</span>
+      <span class="section-title">Behavioral / WMI monitors</span>
+      <span class="section-path">wmi/</span>
+      <span class="section-count">3 scripts</span>
+    </div>
+    <div class="card-grid">
+      <a class="card" data-cat="behavioral" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/wmi/WMIWebShellmonitor.ps1">
+        <div class="card-tags"><span class="badge b-wmi">WMI</span><span class="badge b-ps">PowerShell</span></div>
+        <div class="card-name">WMIWebShellmonitor.ps1</div>
+        <div class="card-desc">Enhanced version of the original — adds hash logging, severity triage, and alert-on-match with Slack/email webhook support.</div>
+        <div class="card-footer"><span class="mitre">T1505.003</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="behavioral" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/wmi/WMIProcessChainMonitor.ps1">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-wmi">WMI</span><span class="badge b-ps">PowerShell</span></div>
+        <div class="card-name">WMIProcessChainMonitor.ps1</div>
+        <div class="card-desc">WMI __InstanceCreationEvent on Win32_Process — alerts on anomalous child processes spawned from w3wp.exe or IIS worker processes.</div>
+        <div class="card-footer"><span class="mitre">T1059 · T1106</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="behavioral" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/wmi/WMINetworkMonitor.ps1">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-wmi">WMI</span><span class="badge b-ps">PowerShell</span></div>
+        <div class="card-name">WMINetworkMonitor.ps1</div>
+        <div class="card-desc">Monitors Win32_NetworkConnection events from IIS worker PIDs — flags unexpected outbound connections from w3wp.exe to external hosts.</div>
+        <div class="card-footer"><span class="mitre">T1071.001 · T1071.004</span><span class="gh-link">View →</span></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section" id="sec-process">
+    <div class="section-header">
+      <span class="section-icon">🌲</span>
+      <span class="section-title">Process chain detection</span>
+      <span class="section-path">process-chain/</span>
+      <span class="section-count">3 rules</span>
+    </div>
+    <div class="card-grid">
+      <a class="card" data-cat="process" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/process-chain/w3wp_child_process.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">w3wp_child_process.yar</div>
+        <div class="card-desc">Detects cmd.exe, powershell.exe, wscript.exe, and cscript.exe as direct children of w3wp.exe — the classic webshell process chain indicator.</div>
+        <div class="card-footer"><span class="mitre">T1059.001 · T1059.003</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="process" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/process-chain/lolbin_from_iis.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">lolbin_from_iis.yar</div>
+        <div class="card-desc">Detects LOLBin abuse (MSBuild, regsvr32, mshta, certutil, bitsadmin) launched from IIS worker process context.</div>
+        <div class="card-footer"><span class="mitre">T1127.001 · T1218</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="process" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/process-chain/impersonation_from_iis.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">impersonation_from_iis.yar</div>
+        <div class="card-desc">Detects token impersonation and CreateProcessAsUser calls originating from IIS — targets ShellExecuteEx_Runas and impersonation shells.</div>
+        <div class="card-footer"><span class="mitre">T1134.001 · T1548.002</span><span class="gh-link">View →</span></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section" id="sec-memory">
+    <div class="section-header">
+      <span class="section-icon">🧠</span>
+      <span class="section-title">Memory scanning</span>
+      <span class="section-path">memory/</span>
+      <span class="section-count">2 rules</span>
+    </div>
+    <div class="card-grid">
+      <a class="card" data-cat="memory" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/memory/reflective_pe_memory.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">reflective_pe_memory.yar</div>
+        <div class="card-desc">Scans process memory (via YARA -p flag) for MZ/PE headers in non-image memory regions — catches reflective PE loads with no disk artifact.</div>
+        <div class="card-footer"><span class="mitre">T1620 · T1055</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="memory" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/memory/ntdll_unhook_memory.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">ntdll_unhook_memory.yar</div>
+        <div class="card-desc">Detects fresh ntdll mapped alongside the hooked copy — two ntdll base addresses in a single process indicates an unhooking attempt.</div>
+        <div class="card-footer"><span class="mitre">T1562.001 · T1055</span><span class="gh-link">View →</span></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section" id="sec-network">
+    <div class="section-header">
+      <span class="section-icon">🌐</span>
+      <span class="section-title">Network detection</span>
+      <span class="section-path">network/</span>
+      <span class="section-count">2 rules</span>
+    </div>
+    <div class="card-grid">
+      <a class="card" data-cat="network" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/network/doh_c2_detection.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">doh_c2_detection.yar</div>
+        <div class="card-desc">YARA rule for network traffic — detects DNS-over-HTTPS query patterns with encoded payloads in the name field exceeding normal domain entropy.</div>
+        <div class="card-footer"><span class="mitre">T1071.004</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="network" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/network/websocket_persistence.yar">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-yara">YARA</span></div>
+        <div class="card-name">websocket_persistence.yar</div>
+        <div class="card-desc">Detects long-lived WebSocket upgrade handshakes from IIS processes — flags persistent bidirectional channels from w3wp.exe to external hosts.</div>
+        <div class="card-footer"><span class="mitre">T1071.001</span><span class="gh-link">View →</span></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section" id="sec-sigma">
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <span class="section-title">Sigma / SIEM rules</span>
+      <span class="section-path">sigma/</span>
+      <span class="section-count">3 rules</span>
+    </div>
+    <div class="card-grid">
+      <a class="card" data-cat="sigma" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/sigma/webshell_process_chain.yml">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-sigma">Sigma</span></div>
+        <div class="card-name">webshell_process_chain.yml</div>
+        <div class="card-desc">Sigma rule correlating Sysmon EID 1 events — w3wp.exe spawning cmd, powershell, wscript, mshta, or any LOLBin. Maps to Splunk, Elastic, and Sentinel.</div>
+        <div class="card-footer"><span class="mitre">T1059 · T1505.003</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="sigma" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/sigma/iis_outbound_connection.yml">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-sigma">Sigma</span></div>
+        <div class="card-name">iis_outbound_connection.yml</div>
+        <div class="card-desc">Sigma rule on Sysmon EID 3 — unexpected outbound network connections initiated by w3wp.exe to non-local destinations.</div>
+        <div class="card-footer"><span class="mitre">T1071.001 · T1071.004</span><span class="gh-link">View →</span></div>
+      </a>
+      <a class="card" data-cat="sigma" href="https://github.com/0xAnalyst/WebshellDetection-WMI-Yara/blob/master/sigma/etw_amsi_tamper.yml">
+        <div class="card-tags"><span class="badge b-new">New</span><span class="badge b-sigma">Sigma</span></div>
+        <div class="card-name">etw_amsi_tamper.yml</div>
+        <div class="card-desc">Sigma rule correlating EID 4656/4657 registry access on AMSI provider keys and ETW session modification events in the same process context.</div>
+        <div class="card-footer"><span class="mitre">T1562.001 · T1562.006</span><span class="gh-link">View →</span></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="warning">
+    ⚠️ All detection rules and monitors are for authorized security testing and threat hunting in environments you own or have explicit permission to monitor.
+  </div>
+
+</div>
+<script>
+function filter(cat, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.card').forEach(c => {
+    c.classList.toggle('hidden', cat !== 'all' && c.dataset.cat !== cat);
+  });
+  document.querySelectorAll('.section').forEach(s => {
+    s.style.display = s.querySelectorAll('.card:not(.hidden)').length === 0 ? 'none' : '';
+  });
+}
+</script>
+</body>
+</html>
