@@ -1,4 +1,4 @@
-# 0xAnalyst/WebshellDetection-WMI-Yara
+# Webshell Detection Through WMI Event Subscription and Yara Rules
 
 ASPX webshell detection using WMI permanent event subscriptions, YARA rules, Sigma rules, and PowerShell behavioral monitors. Covers static file scanning, process chain analysis, memory scanning, network telemetry, and SIEM correlation.
 
